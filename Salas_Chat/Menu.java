@@ -76,17 +76,24 @@ public class Menu {
                 break;
             case "pass1" : 
                     historico.login(cliente.nome,str);
-                    resposta = showMenu();
-                    fase = "menu";
+                    resposta = showLobby();
+                    fase = "lobby";
                     out.println(resposta);
                 break;
             case "pass2" : 
                     this.cliente = historico.registar(tmp,str);
-                    resposta = showMenu();
+                    resposta = showLobby();
                     out.println(resposta);
-                    fase = "menu";
+                    fase = "lobby";
                 break;
-            case "menu" : 
+            case "lobby" :
+                    if(historico.getSalas().containsKey(str)){
+                        out.println("Entrou no lobby");
+                        fase = "sala";
+                    }
+                    else {out.println("Sala não existe");}
+                break;
+            case "sala" :
                     historico.adicionaMensagem(cliente.nome, str);
                     historico.acorda();
                     resposta = str;
@@ -121,9 +128,8 @@ public class Menu {
     * Método que contém as opções do menu principal
     * @return String que mostra o menu principal
     */
-    private static String showMenu(){
-	    String array = null;
-	    return array;
+    private static String showLobby(){
+	    return ("Salas:\n" + historico.getSalas().keySet());
 	}
     /*
     * Método que contém as opções do menu inicial, quando o cliente acaba de se ligar ao historico
