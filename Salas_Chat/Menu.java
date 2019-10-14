@@ -19,6 +19,8 @@ public class Menu {
     /** String para guardar valor anterior */
     private String tmp;
 
+    private Sala sala;
+
     private PrintWriter out;
     /*
     * Construtor parameterizado
@@ -76,26 +78,28 @@ public class Menu {
                 break;
             case "pass1" : 
                     historico.login(cliente.nome,str);
-                    resposta = showLobby();
+                    resposta = showLobby(historico.getSalas().keySet().toString());
                     fase = "lobby";
                     out.println(resposta);
                 break;
             case "pass2" : 
                     this.cliente = historico.registar(tmp,str);
-                    resposta = showLobby();
+                    resposta = showLobby(historico.getSalas().keySet().toString());
                     out.println(resposta);
                     fase = "lobby";
                 break;
             case "lobby" :
                     if(historico.getSalas().containsKey(str)){
-                        out.println("Entrou no lobby");
+                        out.println("Entrou na sala");
                         fase = "sala";
+                        resposta = "sala__:" + str;
+                        sala = historico.getSalas().get(str);
                     }
                     else {out.println("Sala não existe");}
                 break;
             case "sala" :
-                    historico.adicionaMensagem(cliente.nome, str);
-                    historico.acorda();
+                    sala.adicionaMensagem(cliente.nome, str);
+                    sala.acorda();
                     resposta = str;
                 break;
         }
@@ -128,8 +132,8 @@ public class Menu {
     * Método que contém as opções do menu principal
     * @return String que mostra o menu principal
     */
-    private static String showLobby(){
-	    return ("Salas:\n" + historico.getSalas().keySet());
+    private static String showLobby(String salas){
+	    return ("Salas:\n" + salas);
 	}
     /*
     * Método que contém as opções do menu inicial, quando o cliente acaba de se ligar ao historico

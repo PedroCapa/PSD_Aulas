@@ -5,6 +5,8 @@ import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Servidor{
 
@@ -14,6 +16,8 @@ public class Servidor{
 		try{
 			ServerSocket ss = new ServerSocket(port);
 			Historico h = new Historico();
+			criaSalas(h);
+
 			while(true){
 				try{
 					Socket cs = ss.accept();
@@ -28,15 +32,21 @@ public class Servidor{
 			System.out.println(e);
 		}
 	}
+
+	public static void criaSalas(Historico h){
+		h.getSalas().put("Desporto", new Sala(new ArrayList<>(), "Desporto"));
+		h.getSalas().put("Politica", new Sala(new ArrayList<>(), "Politica"));
+		h.getSalas().put("Riczao", new Sala(new ArrayList<>(), "Riczao"));
+	}
 }
 
 class Escritor extends Thread{
 	private Socket cs;
-	private Historico historico;
+	private Sala sala;
 
-	public Escritor(Socket s, Historico h){
+	public Escritor(Socket s, Sala sl){
 		cs = s;
-		historico = h;
+		sala = sl;
 	}
 
 	public void run(){
@@ -47,12 +57,12 @@ class Escritor extends Thread{
 
 			while(!(this.cs.isClosed())){//Enquanto n for EOF continuar
 				//Se o tamanho forem iguais recebeu tudo, caso contrario vai enviando mensagens
-				if(this.historico.tamanho() > tam){
-					out.println(this.historico.get(tam).toString());
+				if(this.sala.tamanho() > tam){
+					out.println(this.sala.getMensagem(tam).toString());
 					tam++;
 				}
 				else{
-					this.historico.adormece();
+					this.sala.adormece();
 				}
 				//Deveria de n enviar nada para o outro lado no entanto ele continua a escrever no ecra a propria mensagem
 			}
@@ -83,11 +93,14 @@ class Leitor extends Thread{
 
 			String conteudo, resposta;
 			resposta = menu.processaConteudo("0");
-			//Adicionar a parte do login/ registo
+
 			while((conteudo = in.readLine()) != null){
 				resposta = menu.processaConteudo(conteudo);
-				if(resposta == null){
-					(new Thread (new Escritor(this.sc, this.historico))).start();
+				Matcher m = Pattern.compile("sala__:(.*)").matcher(resposta);
+				if(m.matches()){
+					Sala s = this.historico.getSala(m.group(1));
+					//Ver qual é a sala escolhida
+					(new Thread (new Escritor(this.sc, s))).start();
 				}
 			}
 			out.close();
