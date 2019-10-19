@@ -55,27 +55,43 @@ class ClientHandler extends Thread {
 
             //Converter byte[] para Person
             Person p = Person.parseFrom(per);
+            addPerson(p);
 
             //Fazer um metodo no printer que recebe um Sys e um cos para enviar todas as mensagens em atraso para o cliente
-            Printer.print(sys, null, p, null, cos);
-
-            Printer.printPerson(sys);
+            //Printer.print(sys, null, p, null, cos);
+            //Printer.printPerson(sys);
 
             while (true) {
                 len = cis.readRawLittleEndian32(); //Se a pessoa que escreveu enviar para toda a gente o read vai ser lido por todos
                 byte[] ba = cis.readRawBytes(len);
-
-                String s = ba.toString();
-          
+                Chat chat = Chat.parseFrom(ba);
+                Printer.print(chat);          
                 //Adicionar ao chat a mensagem Talvez fazer no print pq do synchronized
+                this.sys.toBuilder().addChat(chat);
+                this.out.sendChat(chat);
 
-
-                Printer.print(sys, s, p, this.out, null);//Enviar para toda a gente a mensagem
+                //Printer.print(sys, null, p, this.out, null);//Enviar para toda a gente a mensagem
             }
         } catch (java.io.IOException e) {
             System.out.println(e.getMessage());
         }
       }
+
+    public synchronized void addPerson(Person person){
+
+        List<Person> persons = this.sys.getPersonList();
+        boolean flag = true;
+        for(Person p: persons){
+            flag = p.getName().equals(person.getName());
+            if(!flag){
+                break;
+            }
+        }
+        if(flag){
+            Sys.Builder s = this.sys.toBuilder();
+            s.addPerson(person);
+        }
+    }
 }
 
 
@@ -92,5 +108,17 @@ class Output{
 
     public void add(CodedOutputStream c){
         this.cos.add(c);
+    }
+
+    public void sendChat(Chat chat){
+        byte [] cb = chat.toByteArray();
+        for(CodedOutputStream output_stream: cos){
+            try{
+                output_stream.writeFixed32NoTag(cb.length);
+                output_stream.writeRawBytes(cb);
+                output_stream.flush();
+            }
+            catch(IOException exc){System.out.println(exc.getMessage());}
+        }
     }
 }

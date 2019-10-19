@@ -83,7 +83,4 @@ class Printer {
             System.out.println("Nome " + p.getName() + "            " + "Pass: " + p.getPass());
         }
     }
-
-
 }
-

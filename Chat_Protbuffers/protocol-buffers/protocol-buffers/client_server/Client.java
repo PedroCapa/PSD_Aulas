@@ -22,7 +22,7 @@ public class Client {
             int port = Integer.parseInt(args[1]);
 
             Socket s = new Socket(host, port);
-            BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
+            BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
             CodedInputStream cis = CodedInputStream.newInstance(s.getInputStream());
             CodedOutputStream cos = CodedOutputStream.newInstance(s.getOutputStream());
             
@@ -36,15 +36,29 @@ public class Client {
             cos.writeFixed32NoTag(ba.length);
             cos.writeRawBytes(ba);
             cos.flush();
+
+            System.out.println("Já fui enviado ao servidor");
         
-            //Criar thread, uma para ler do teclado e outra para ler do servidor escrever
+            //A thread criada vai ler do servidor
             (new LeServidor(cis, cos)).start();
 
+            System.out.println("Vou entrar no ciclo");
+
             while (true) {
-                //Esta parte ele envia a mensagem para o servidor, penso que esteja feito
+                //Aqui crio uma classe chat com a mensagem escrita do teclado e envio para o servidor
+                System.out.println("Eu estou à espera de uma mensagem");
                 String str = in.readLine();
-                System.out.println(str);
-                
+                System.out.println("Acabei de ler uma mensagem");
+                Chat.Builder chat = Chat.newBuilder();
+                chat.
+                    setPerson(p.getName()).
+                    setNote(str);
+
+                byte [] cb = chat.build().toByteArray();
+
+                cos.writeFixed32NoTag(cb.length);
+                cos.writeRawBytes(cb);
+                cos.flush();
             }
             //os.close();
             //s.shutdownOutput();
@@ -79,20 +93,14 @@ class LeServidor extends Thread {
 
     public void run() {
         try {
+            System.out.println("A thread LeServidor foi criada");
             while (true) {
-                String str = "Envio mensagem de Pedro";
-                byte[] ba = str.getBytes();
-
-                cos.writeFixed32NoTag(ba.length);
-                cos.writeRawBytes(ba);
-                cos.flush();
-                Thread.sleep(100000);
-
+                int len = cis.readRawLittleEndian32();
+                byte[] ba = cis.readRawBytes(len);
+                Chat chat = Chat.parseFrom(ba);
+                Printer.print(chat);
             }
         } catch (java.io.IOException e) {
-            System.out.println(e.getMessage());
-        }
-        catch(InterruptedException e){
             System.out.println(e.getMessage());
         }
       }
