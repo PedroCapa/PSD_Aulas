@@ -19,7 +19,7 @@ public class Server {
         try{
             int port = java.lang.Integer.parseInt(args[0]);
             ServerSocket srv = new ServerSocket(port);
-            Sys sys = Sys.newBuilder().build();
+            Sys.Builder sys = Sys.newBuilder();
             Output out = new Output();
             while (true) {
                 Socket cli=srv.accept();
@@ -37,10 +37,10 @@ public class Server {
 class ClientHandler extends Thread {
     CodedInputStream cis;
     CodedOutputStream cos;
-    Sys sys;
+    Sys.Builder sys;
     Output out;
 
-    ClientHandler(CodedInputStream cis, CodedOutputStream cos, Sys sys, Output out) {
+    ClientHandler(CodedInputStream cis, CodedOutputStream cos, Sys.Builder sys, Output out) {
         this.cis = cis;
         this.cos = cos;
         this.sys = sys;
@@ -49,17 +49,18 @@ class ClientHandler extends Thread {
 
     public void run() {
         try {
-            //O Cliente tem que enviar a pessoa que se conectou pq o cos muda sempre que ele se conecta
             int len = cis.readRawLittleEndian32();
             byte[] per = cis.readRawBytes(len);
 
-            //Converter byte[] para Person
             Person p = Person.parseFrom(per);
-            addPerson(p);
+            int x = addPerson(p);
+            
+            Printer.autenticacao(this.cos, x);
+            
+            if(x == -1)
+                return;
 
-            //Fazer um metodo no printer que recebe um Sys e um cos para enviar todas as mensagens em atraso para o cliente
-            //Printer.print(sys, null, p, null, cos);
-            //Printer.printPerson(sys);
+            Printer.conectado(this.cos, this.sys);
 
             while (true) {
                 len = cis.readRawLittleEndian32(); //Se a pessoa que escreveu enviar para toda a gente o read vai ser lido por todos
@@ -67,7 +68,7 @@ class ClientHandler extends Thread {
                 Chat chat = Chat.parseFrom(ba);
                 Printer.print(chat);          
                 //Adicionar ao chat a mensagem Talvez fazer no print pq do synchronized
-                this.sys.toBuilder().addChat(chat);
+                this.sys.addChat(chat);
                 this.out.sendChat(chat);
 
                 //Printer.print(sys, null, p, this.out, null);//Enviar para toda a gente a mensagem
@@ -77,19 +78,35 @@ class ClientHandler extends Thread {
         }
       }
 
-    public synchronized void addPerson(Person person){
+    public synchronized int addPerson(Person person){
 
         List<Person> persons = this.sys.getPersonList();
-        boolean flag = true;
+        boolean flag = false;
+        Person per = Person.newBuilder().setName("admin").setPass("admin").build();
+        System.out.println(persons.size());
         for(Person p: persons){
             flag = p.getName().equals(person.getName());
-            if(!flag){
+            if(flag){
+                System.out.println(p.getName() + "   " + p.getPass());
+                Person kk = Person.newBuilder().setName(p.getName()).setPass(p.getPass()).build();
+                per = kk;
+                System.out.println(per.getName() + "   " + per.getPass());
                 break;
             }
         }
-        if(flag){
-            Sys.Builder s = this.sys.toBuilder();
-            s.addPerson(person);
+        if(!flag){
+            sys.addPerson(person);
+            System.out.println("Não existe ninguem com o nome " + person.getName());
+            return 0;
+        }
+        else if(!person.getPass().equals(per.getPass())){
+            System.out.println("Palavra passe errada para o nome " + person.getName()); 
+            return -1;
+        }
+
+        else{
+            System.out.println("Login com sucesso para o nome " + person.getName()); 
+            return 1;
         }
     }
 }

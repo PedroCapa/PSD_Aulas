@@ -30,25 +30,29 @@ public class Client {
             
             byte[] ba = p.toByteArray();
 
-            System.out.println("Pretendo entrar como " + p.getName());
-
-            //Enviar a pessoa para o servidor
             cos.writeFixed32NoTag(ba.length);
             cos.writeRawBytes(ba);
             cos.flush();
+            
+            int len = cis.readRawLittleEndian32();
+            ba = cis.readRawBytes(len);
+            int x = (int)ba[0];
 
-            System.out.println("Já fui enviado ao servidor");
-        
-            //A thread criada vai ler do servidor
+            if(x == -1){
+                System.out.println("Palavra passe incorreta");
+                return;
+            }
+
+            else if(x == 0)
+                System.out.println("Conta criada com sucesso");
+
+            else if(x == 1){
+                System.out.println("Sessão iniciada com sucesso");
+            }
             (new LeServidor(cis, cos)).start();
 
-            System.out.println("Vou entrar no ciclo");
-
             while (true) {
-                //Aqui crio uma classe chat com a mensagem escrita do teclado e envio para o servidor
-                System.out.println("Eu estou à espera de uma mensagem");
                 String str = in.readLine();
-                System.out.println("Acabei de ler uma mensagem");
                 Chat.Builder chat = Chat.newBuilder();
                 chat.
                     setPerson(p.getName()).
@@ -75,12 +79,7 @@ public class Client {
         .setPass(pass)
         .build();
     }
-
 }
-
-//Criar classe que le do servidor o que escreve
-
-//No while o que ler do servidor faz um System.out.println
 
 class LeServidor extends Thread {
     CodedInputStream cis;
@@ -93,7 +92,6 @@ class LeServidor extends Thread {
 
     public void run() {
         try {
-            System.out.println("A thread LeServidor foi criada");
             while (true) {
                 int len = cis.readRawLittleEndian32();
                 byte[] ba = cis.readRawBytes(len);

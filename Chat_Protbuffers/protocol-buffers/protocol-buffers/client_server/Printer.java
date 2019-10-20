@@ -83,4 +83,33 @@ class Printer {
             System.out.println("Nome " + p.getName() + "            " + "Pass: " + p.getPass());
         }
     }
+
+
+    static void autenticacao(CodedOutputStream cos, int x){
+        try{
+            byte[] ba = {0};
+            ba[0] = (byte)x;
+            cos.writeFixed32NoTag(ba.length);
+            cos.writeRawBytes(ba);
+            cos.flush();
+        }
+        catch(java.io.IOException e){
+            System.out.println(e.getMessage());
+        } 
+
+    }
+
+    static void conectado(CodedOutputStream cos, Sys.Builder sys){
+        try{
+            for(Chat c: sys.getChatList()){
+                byte[] ba = c.toByteArray();
+                cos.writeFixed32NoTag(ba.length);
+                cos.writeRawBytes(ba);
+                cos.flush();
+            }
+        }
+        catch(java.io.IOException e){
+            System.out.println(e.getMessage());
+        }
+    }
 }
