@@ -112,32 +112,25 @@ class ClientHandler extends Thread {
 
         List<Person> persons = this.sys.getPersonList();
         boolean flag = false;
-        Person per = Person.newBuilder().setName("admin").setPass("admin").build();
         System.out.println(persons.size());
         for(Person p: persons){
             flag = p.getName().equals(person.getName());
             if(flag){
                 System.out.println(p.getName() + "   " + p.getPass());
-                Person kk = Person.newBuilder().setName(p.getName()).setPass(p.getPass()).build();
-                per = kk;
-                System.out.println(per.getName() + "   " + per.getPass());
-                break;
+                String real_passwd = p.getPass();
+                String used_passwd = person.getPass();
+                if(real_passwd.equals(used_passwd)){
+
+                    return 1;
+                }
+                else {
+                    return -1;
+                }
             }
         }
-        if(!flag){
-            sys.addPerson(person);
-            System.out.println("Não existe ninguem com o nome " + person.getName());
-            return 0;
-        }
-        else if(!person.getPass().equals(per.getPass())){
-            System.out.println("Palavra passe errada para o nome " + person.getName()); 
-            return -1;
-        }
-
-        else{
-            System.out.println("Login com sucesso para o nome " + person.getName()); 
-            return 1;
-        }
+        sys.addPerson(person);
+        System.out.println("Não existe ninguem com o nome " + person.getName());
+        return 0;
     }
 }
 
