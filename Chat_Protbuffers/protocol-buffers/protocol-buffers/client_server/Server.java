@@ -7,6 +7,7 @@ import client_server.Protos.Chat;
 
 import com.google.protobuf.CodedInputStream;
 import com.google.protobuf.CodedOutputStream;
+import com.google.protobuf.InvalidProtocolBufferException;
 
 import java.io.*;
 import java.net.*;
@@ -49,21 +50,12 @@ class ClientHandler extends Thread {
 
     public void run() {
         try {
-            int len = cis.readRawLittleEndian32();
-            byte[] per = cis.readRawBytes(len);
+            //Fase de autenticação
+            authentication();
 
-            Person p = Person.parseFrom(per);
-            int x = addPerson(p);
-            
-            Printer.autenticacao(this.cos, x);
-            
-            if(x == -1)
-                return;
-
-            Printer.conectado(this.cos, this.sys);
-
+            //Troca de mensagens
             while (true) {
-                len = cis.readRawLittleEndian32(); //Se a pessoa que escreveu enviar para toda a gente o read vai ser lido por todos
+                int len = cis.readRawLittleEndian32(); //Se a pessoa que escreveu enviar para toda a gente o read vai ser lido por todos
                 byte[] ba = cis.readRawBytes(len);
                 Chat chat = Chat.parseFrom(ba);
                 Printer.print(chat);          
@@ -76,7 +68,45 @@ class ClientHandler extends Thread {
         } catch (java.io.IOException e) {
             System.out.println(e.getMessage());
         }
-      }
+    }
+
+    public void authentication(){
+        
+        try{
+        int len = cis.readRawLittleEndian32();
+        byte[] per = cis.readRawBytes(len);
+
+        Person p = Person.parseFrom(per);
+        int x = addPerson(p);
+
+        if(x == -1){
+            byte[] ba = {0};
+            ba[0] = (byte)x;
+            cos.writeFixed32NoTag(ba.length);
+            cos.writeRawBytes(ba);
+            cos.flush();
+            authentication();   
+        }
+            byte[] ba = {0};
+            ba[0] = (byte)x;
+            cos.writeFixed32NoTag(ba.length);
+            cos.writeRawBytes(ba);
+            cos.flush();
+
+            for(Chat c: sys.getChatList()){
+                ba = c.toByteArray();
+                cos.writeFixed32NoTag(ba.length);
+                cos.writeRawBytes(ba);
+                cos.flush();
+            }
+        }
+        catch(java.io.IOException e){
+            System.out.println(e.getMessage());
+        }
+        catch(Exception e){
+            System.out.println(e.getMessage());
+        }
+    }
 
     public synchronized int addPerson(Person person){
 
