@@ -49,24 +49,44 @@ public class Client {
             else if(x == 1){
                 System.out.println("Sessão iniciada com sucesso");
             }
-            (new LeServidor(cis, cos)).start();
+            Estado state = new Estado(x);
+            (new LeServidor(cis, cos, state)).start();
+            
+            System.out.println("\n------------------------------------------------");
 
             while (true) {
                 String str = in.readLine();
-                Chat.Builder chat = Chat.newBuilder();
-                chat.
-                    setPerson(p.getName()).
-                    setNote(str);
 
-                byte [] cb = chat.build().toByteArray();
+                if(str != null && (state.state == 0 || state.state == 1 || state.state == -1)){
+                    byte[] cb = str.getBytes();
+                    cos.writeFixed32NoTag(cb.length);
+                    cos.writeRawBytes(cb);
+                    cos.flush();
+                }
+                else if(str != null && state.state == 100){
+                    Chat.Builder chat = Chat.newBuilder();
+                    chat.
+                        setPerson(p.getName()).
+                        setNote(str);
 
-                cos.writeFixed32NoTag(cb.length);
-                cos.writeRawBytes(cb);
-                cos.flush();
+                    byte [] cb = chat.build().toByteArray();
+
+                    cos.writeFixed32NoTag(cb.length);
+                    cos.writeRawBytes(cb);
+                    cos.flush();
+                }
+                else{
+                    System.out.println("Sair");
+                    cos.writeFixed32NoTag(0); //Da exceção pq estou a enviar um null
+                    cos.writeRawBytes(str.getBytes());
+                    cos.flush();
+                    break;
+                }
             }
-            //os.close();
+            //cos.close();
             //s.shutdownOutput();
-        }catch(Exception e){
+        }
+        catch(Exception e){
             e.printStackTrace();
             System.exit(0);
         }
@@ -84,10 +104,12 @@ public class Client {
 class LeServidor extends Thread {
     CodedInputStream cis;
     CodedOutputStream cos;
+    Estado state;
 
-    LeServidor(CodedInputStream cis, CodedOutputStream cos) {
+    LeServidor(CodedInputStream cis, CodedOutputStream cos, Estado state) {
         this.cis = cis;
         this.cos = cos;
+        this.state = state;
     }
 
     public void run() {
@@ -95,8 +117,23 @@ class LeServidor extends Thread {
             while (true) {
                 int len = cis.readRawLittleEndian32();
                 byte[] ba = cis.readRawBytes(len);
-                Chat chat = Chat.parseFrom(ba);
-                Printer.print(chat);
+
+                if(this.state.state == 100){
+                    Chat chat = Chat.parseFrom(ba);
+                    Printer.print(chat);
+                }
+                else if(ba[0] == -1){
+                    System.out.println("A sala não existe");
+                }
+                else if(ba[0] == 0){
+                    System.out.println("Entrou com sucesso\n");
+                    this.state.state = 100;
+                }
+                else{
+                    String str = new String(ba);
+                    System.out.println("Salas de Chat disponiveis: (-_-)");
+                    System.out.println(str);
+                }
             }
         } catch (java.io.IOException e) {
             System.out.println(e.getMessage());
@@ -104,3 +141,11 @@ class LeServidor extends Thread {
       }
 }
 
+class Estado{
+
+    int state;
+
+    public Estado(int estado){
+        this.state = state;
+    }
+}
