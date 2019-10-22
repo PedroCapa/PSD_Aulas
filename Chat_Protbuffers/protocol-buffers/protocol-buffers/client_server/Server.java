@@ -8,6 +8,7 @@ import client_server.Protos.Room;
 
 import com.google.protobuf.CodedInputStream;
 import com.google.protobuf.CodedOutputStream;
+import com.google.protobuf.InvalidProtocolBufferException;
 
 import java.io.*;
 import java.net.*;
@@ -78,6 +79,13 @@ class ClientHandler extends Thread {
                 Printer.menu(this.sys, this.cos); 
     
                 len = cis.readRawLittleEndian32();
+
+            //Fase de autenticação
+            authentication();
+
+            //Troca de mensagens
+            while (true) {
+                int len = cis.readRawLittleEndian32(); //Se a pessoa que escreveu enviar para toda a gente o read vai ser lido por todos
                 byte[] ba = cis.readRawBytes(len);
 
                 if(this.out.salas.containsKey(new String(ba))){
@@ -99,7 +107,45 @@ class ClientHandler extends Thread {
         } catch (java.io.IOException e) {
             System.out.println(e.getMessage());
         }
-      }
+    }
+
+    public void authentication(){
+        
+        try{
+        int len = cis.readRawLittleEndian32();
+        byte[] per = cis.readRawBytes(len);
+
+        Person p = Person.parseFrom(per);
+        int x = addPerson(p);
+
+        if(x == -1){
+            byte[] ba = {0};
+            ba[0] = (byte)x;
+            cos.writeFixed32NoTag(ba.length);
+            cos.writeRawBytes(ba);
+            cos.flush();
+            authentication();   
+        }
+            byte[] ba = {0};
+            ba[0] = (byte)x;
+            cos.writeFixed32NoTag(ba.length);
+            cos.writeRawBytes(ba);
+            cos.flush();
+
+            for(Chat c: sys.getChatList()){
+                ba = c.toByteArray();
+                cos.writeFixed32NoTag(ba.length);
+                cos.writeRawBytes(ba);
+                cos.flush();
+            }
+        }
+        catch(java.io.IOException e){
+            System.out.println(e.getMessage());
+        }
+        catch(Exception e){
+            System.out.println(e.getMessage());
+        }
+    }
 
     public void chat_room(String name){
         try{
@@ -128,32 +174,25 @@ class ClientHandler extends Thread {
 
         List<Person> persons = this.sys.getPersonList();
         boolean flag = false;
-        Person per = Person.newBuilder().setName("admin").setPass("admin").build();
 
         for(Person p: persons){
             flag = p.getName().equals(person.getName());
             if(flag){
                 System.out.println(p.getName() + "   " + p.getPass());
-                Person kk = Person.newBuilder().setName(p.getName()).setPass(p.getPass()).build();
-                per = kk;
-                System.out.println(per.getName() + "   " + per.getPass());
-                break;
+                String real_passwd = p.getPass();
+                String used_passwd = person.getPass();
+                if(real_passwd.equals(used_passwd)){
+
+                    return 1;
+                }
+                else {
+                    return -1;
+                }
             }
         }
-        if(!flag){
-            sys.addPerson(person);
-            System.out.println("Não existe ninguem com o nome " + person.getName());
-            return 0;
-        }
-        else if(!person.getPass().equals(per.getPass())){
-            System.out.println("Palavra passe errada para o nome " + person.getName()); 
-            return -1;
-        }
-
-        else{
-            System.out.println("Login com sucesso para o nome " + person.getName()); 
-            return 1;
-        }
+        sys.addPerson(person);
+        System.out.println("Não existe ninguem com o nome " + person.getName());
+        return 0;
     }
 
     public synchronized void addChat(Chat c, String name){
