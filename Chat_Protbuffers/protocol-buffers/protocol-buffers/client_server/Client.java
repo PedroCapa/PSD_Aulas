@@ -32,7 +32,10 @@ public class Client {
 
             Person p = authentication();
             
-            (new LeServidor(cis, cos)).start();
+            System.out.println("Bem vindo " + p.getName());
+
+            Estado state = new Estado(1);
+            (new LeServidor(cis, cos, state)).start();
 
             while (true) {
                 String str = in.readLine();
@@ -44,6 +47,7 @@ public class Client {
                     cos.flush();
                 }
                 else if(str != null && state.state == 100){
+                    System.out.println("Entrei na sala");
                     Chat.Builder chat = Chat.newBuilder();
                     chat.
                         setPerson(p.getName()).
@@ -55,21 +59,30 @@ public class Client {
                     cos.writeRawBytes(cb);
                     cos.flush();
                 }
+                else if (str == null && state.state == 100){
+                    System.out.println("Sair da sala");
+                    state.state = 1;
+                    byte[] ba = {'\0'};
+                    cos.writeFixed32NoTag(1); //Da exceção pq estou a enviar um null
+                    cos.writeRawBytes(ba);
+                    cos.flush();
+                }
                 else{
-                    System.out.println("Sair");
-                    cos.writeFixed32NoTag(0); //Da exceção pq estou a enviar um null
-                    cos.writeRawBytes(str.getBytes());
+                    System.out.println("Sair da app");
+                    byte[] ba = {'\0'};
+                    cos.writeFixed32NoTag(1); //Da exceção pq estou a enviar um null
+                    cos.writeRawBytes(ba);
                     cos.flush();
                     break;
                 }
             }
-            //cos.close();
-            //s.shutdownOutput();
+            s.shutdownOutput();
         }
         catch(Exception e){
             e.printStackTrace();
             System.exit(0);
         }
+        System.out.println("Shut down client");
     }
 
     public static Person authentication(){
@@ -94,16 +107,12 @@ public class Client {
             cos.writeRawBytes(ba);
             cos.flush();
 
-            System.out.println("Acabei de enviar a autenticação");
-
             //Processar o resultado e saltar para a próxima fase
             //Talvez deva substituir por um método a parte de receber do servidor
 
             int len = cis.readRawLittleEndian32();
             ba = cis.readRawBytes(len);
             int x = ba[0];
-
-            System.out.println("Recebi a resposta");
 
             if(x == -1){
                 System.out.println("Palavra passe incorreta");

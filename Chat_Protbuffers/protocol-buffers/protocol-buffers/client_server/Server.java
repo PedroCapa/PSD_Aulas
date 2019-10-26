@@ -64,79 +64,72 @@ class ClientHandler extends Thread {
 
     public void run() {
         try {
-            int len = cis.readRawLittleEndian32();
-            byte[] per = cis.readRawBytes(len);
-
-            Person p = Person.parseFrom(per);
-            int x = addPerson(p);
-            
-            Printer.autenticacao(this.cos, x);
-            
-            if(x == -1)
-                return;
-
-            while (true) {
-                Printer.menu(this.sys, this.cos); 
-    
-                len = cis.readRawLittleEndian32();
-
             //Fase de autenticação
             authentication();
-
             //Troca de mensagens
             while (true) {
+                Printer.menu(this.sys, this.cos);
+
+                System.out.println("Voltei a entrar no menu");
+
                 int len = cis.readRawLittleEndian32(); //Se a pessoa que escreveu enviar para toda a gente o read vai ser lido por todos
                 byte[] ba = cis.readRawBytes(len);
 
+
                 if(this.out.salas.containsKey(new String(ba))){
+                    System.out.println("Entrei na sala");
                     byte[] by = {0};
                     cos.writeFixed32NoTag(by.length);
                     cos.writeRawBytes(by);
                     cos.flush();
                     chat_room(new String(ba));
                 }
-                else{
+                else if(len != 1){
                     //Envia mensagem a dizer que a sala não existe
+                    System.out.println("Sala errada");
                     byte[] bytes = {-1};
                     cos.writeFixed32NoTag(bytes.length);
                     cos.writeRawBytes(bytes);
                     cos.flush();
                 }
                 //Caso ele faça ctrl D ele acaba a thread
+                else{
+                    System.out.println("Sair da app");
+                    break;
+                }
             }
-        } catch (java.io.IOException e) {
+        } 
+        catch (java.io.IOException e) {
             System.out.println(e.getMessage());
         }
+
+        System.out.println("Cliente desconectou-se");
     }
 
     public void authentication(){
         
         try{
-        int len = cis.readRawLittleEndian32();
-        byte[] per = cis.readRawBytes(len);
+            int len = cis.readRawLittleEndian32();
+            byte[] per = cis.readRawBytes(len);
 
-        Person p = Person.parseFrom(per);
-        int x = addPerson(p);
+            Person p = Person.parseFrom(per);
+            int x = addPerson(p);
 
-        if(x == -1){
-            byte[] ba = {0};
-            ba[0] = (byte)x;
-            cos.writeFixed32NoTag(ba.length);
-            cos.writeRawBytes(ba);
-            cos.flush();
-            authentication();   
-        }
-            byte[] ba = {0};
-            ba[0] = (byte)x;
-            cos.writeFixed32NoTag(ba.length);
-            cos.writeRawBytes(ba);
-            cos.flush();
-
-            for(Chat c: sys.getChatList()){
-                ba = c.toByteArray();
+            if(x == -1){
+                byte[] ba = {0};
+                ba[0] = (byte)x;
                 cos.writeFixed32NoTag(ba.length);
                 cos.writeRawBytes(ba);
                 cos.flush();
+                authentication();
+            }
+            else{
+                byte[] ba = {0};
+                ba[0] = (byte)x;
+                cos.writeFixed32NoTag(ba.length);
+                cos.writeRawBytes(ba);
+                cos.flush();
+                System.out.println("Entrou com sucesso");
             }
         }
         catch(java.io.IOException e){
@@ -154,14 +147,19 @@ class ClientHandler extends Thread {
 
             int len = 1;
 
-            while(len != 0){
+            while(true){
                 len = cis.readRawLittleEndian32();
                 byte[] ba = cis.readRawBytes(len);
-                Chat chat = Chat.parseFrom(ba);
-                System.out.println(chat.getNote());
-                //Talvez verificar se foi usado o ctrl D
-                addChat(chat, name);//Alterar esta pq tem se que ir buscar o room e so depois e que se adiciona o chat
-                this.out.sendChat(chat, name);
+                if(len != 1){
+                    Chat chat = Chat.parseFrom(ba);
+                    System.out.println(chat.getNote());
+                    addChat(chat, name);
+                    this.out.sendChat(chat, name);
+                }
+                else{
+                    System.out.println("Vou sair da sala");
+                    break;
+                }
             }
             removeCoded(name, cos);
         }
@@ -191,7 +189,6 @@ class ClientHandler extends Thread {
             }
         }
         sys.addPerson(person);
-        System.out.println("Não existe ninguem com o nome " + person.getName());
         return 0;
     }
 

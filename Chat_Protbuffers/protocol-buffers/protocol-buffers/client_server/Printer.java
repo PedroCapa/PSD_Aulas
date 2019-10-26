@@ -61,12 +61,9 @@ class Printer {
 
     static void conectado(CodedOutputStream cos, String name, Sys.Builder sys){
         try{
-            System.out.println("Enviar mensagens da sala");
             for(Room r: sys.getRoomList()){
                 if(r.getName().equals(name)){
-                    System.out.println("Enviar mensagens da sala Desporto");
                     for(Chat c: r.getChatList()){
-                        System.out.println("Enviei mensagem " + c.getNote());
                         byte[] ba = c.toByteArray();
                         cos.writeFixed32NoTag(ba.length);
                         cos.writeRawBytes(ba);
