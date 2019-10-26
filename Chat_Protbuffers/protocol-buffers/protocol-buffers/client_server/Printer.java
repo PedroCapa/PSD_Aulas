@@ -28,27 +28,23 @@ class Printer {
 
 
     static void autenticacao(CodedOutputStream cos, int x){
-        try{
-            byte[] ba = {0};
-            ba[0] = (byte)x;
-            cos.writeFixed32NoTag(ba.length);
-            cos.writeRawBytes(ba);
-            cos.flush();
-        }
-        catch(java.io.IOException e){
-            System.out.println(e.getMessage());
-        } 
-
+        byte[] ba = {0};
+        ba[0] = (byte)x;
+        envia(ba, cos);
     }
     //Testar a imprimir o menu
     static void menu(Sys.Builder sys, CodedOutputStream cos){
+        String str = "";
+        for(Room r: sys.getRoomList()){
+            str = str + "\n" + r.getName();
+        }
+        
+        byte[] ba = str.getBytes();
+        envia(ba, cos);
+    }
+
+    static void envia(byte[] ba, CodedOutputStream cos){
         try{
-            String str = "";
-            for(Room r: sys.getRoomList()){
-                str = str + "\n" + r.getName();
-            }
-            
-            byte[] ba = str.getBytes();
             cos.writeFixed32NoTag(ba.length);
             cos.writeRawBytes(ba);
             cos.flush();
@@ -60,21 +56,14 @@ class Printer {
 
 
     static void conectado(CodedOutputStream cos, String name, Sys.Builder sys){
-        try{
-            for(Room r: sys.getRoomList()){
-                if(r.getName().equals(name)){
-                    for(Chat c: r.getChatList()){
-                        byte[] ba = c.toByteArray();
-                        cos.writeFixed32NoTag(ba.length);
-                        cos.writeRawBytes(ba);
-                        cos.flush();
-                    }
-                    break;
+        for(Room r: sys.getRoomList()){
+            if(r.getName().equals(name)){
+                for(Chat c: r.getChatList()){
+                    byte[] ba = c.toByteArray();
+                    envia(ba, cos);
                 }
+                break;
             }
-        }
-        catch(java.io.IOException e){
-            System.out.println(e.getMessage());
         }
     }
 }

@@ -42,9 +42,7 @@ public class Client {
 
                 if(str != null && (state.state == 0 || state.state == 1 || state.state == -1)){
                     byte[] cb = str.getBytes();
-                    cos.writeFixed32NoTag(cb.length);
-                    cos.writeRawBytes(cb);
-                    cos.flush();
+                    Printer.envia(cb, cos);
                 }
                 else if(str != null && state.state == 100){
                     System.out.println("Entrei na sala");
@@ -55,9 +53,7 @@ public class Client {
 
                     byte [] cb = chat.build().toByteArray();
 
-                    cos.writeFixed32NoTag(cb.length);
-                    cos.writeRawBytes(cb);
-                    cos.flush();
+                    Printer.envia(cb, cos);
                 }
                 else if (str == null && state.state == 100){
                     System.out.println("Sair da sala");
@@ -103,9 +99,7 @@ public class Client {
                                 .build();
 
             byte [] ba = person.toByteArray();
-            cos.writeFixed32NoTag(ba.length);
-            cos.writeRawBytes(ba);
-            cos.flush();
+            Printer.envia(ba, cos);
 
             //Processar o resultado e saltar para a próxima fase
             //Talvez deva substituir por um método a parte de receber do servidor
