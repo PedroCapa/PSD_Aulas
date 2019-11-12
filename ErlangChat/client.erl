@@ -1,7 +1,7 @@
 -module (client).
 -export ([client/1, sendData/2]).
 
-client(Port) -> %Enviar por argumento o PID do servidor
+client(Port) ->
 		{ok, Sock} = gen_tcp:connect("127.0.0.1", Port, [binary, {active,false}]),
 		io:format("Entrei no servidor ~n"),
 		spawn(fun() -> receiveData(Sock) end),
