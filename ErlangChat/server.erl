@@ -2,7 +2,7 @@
 -export([server/1]).
 
 server(Port) ->
-		Room = spawn(fun()-> room([], []) end),
+		Room = spawn(fun()-> room([], [], []) end),
 		{ok, LSock} = gen_tcp:listen(Port, [binary, {packet, 0}]),
 		acceptor(LSock, Room).
 
@@ -13,66 +13,70 @@ acceptor(LSock, Room) ->
 		acceptor(LSock, Room).
 
 
-room(Sockets, Users) ->
+room(Sockets, Users, Messages) ->
 		receive
 			{new_user, Sock} ->
 				io:format("newuser ~n", []),
 				Persons = authentication(Users),
 				io:format("authentication made with sucess ~n", []),
-				room([Sock | Sockets], Persons);
+				[gen_tcp:send(Sock, Data) || Data <- Messages],
+				room([Sock | Sockets], Persons, Messages);
 			{tcp, _, Data} ->
 				io:format("received ~p ~n", [binary_to_list(Data)]),
 				[gen_tcp:send(Socket, Data) || Socket <- Sockets],
-				room(Sockets, Users);
+				room(Sockets, Users, putEndMessage(Data, Messages));
 			{tcp_closed, Sock} ->
 				io:format("user disconnected ~n", []),
-				room(Sockets -- [Sock], Users);
+				room(Sockets -- [Sock], Users, Messages);
 			{tcp_error, Sock, _} ->
 				io:format("tcp error ~n", []),
-				room(Sockets -- [Sock], Users)
+				room(Sockets -- [Sock], Users, Messages)
 		end.
 
 authentication(Users) ->
 		receive
 			{tcp, _, Data} ->
-				Username = binary_to_list(Data),
-				Persons = receivePassword(Username, Users),
-				Persons
-		end.
-
-
-receivePassword(Username, Users) ->
+				Username = binary_to_list(Data)
+		end,
 		receive
-			{tcp, _, Data} ->
-				Password = binary_to_list(Data),
-				Persons = authentication2(Username, Users, Password),
+			{tcp, _, Pass} ->
+				Password = binary_to_list(Pass),
+				Persons = checkPerson(Username, Users, Password),
 				Persons
 		end.
 
-authentication2(Username, Users, Password) ->		
+checkPerson(Username, Users, Password) ->		
 			CheckUsername = containsUsername(Username, Users),
 			CheckPassword = containsPassword(Username, Users, Password),
 		if
-			CheckUsername, CheckPassword  -> Users;
-			CheckUsername, CheckPassword =:= false -> io:format("Entrou muito mal~n", []), authentication(Users);
-			CheckUsername =:= false -> createPerson(Username, Users, Password) % talvez meter depois do if
+			CheckUsername, CheckPassword  -> 
+				Users;
+			CheckUsername, CheckPassword =:= false -> 
+				io:format("Nome de utilizador ou palavra-passe incorretos~n", []), authentication(Users); 
+				%EM vez de ser io enviar para o cliente a dizer que entrou mal
+			CheckUsername =:= false -> 
+				createPerson(Username, Users, Password)
 		end.
-
 
 containsUsername(_, []) -> false;
 containsUsername(Username, [{Name, _} | Tail]) ->
 		if Username == Name -> true;
-			true -> io:format("Comparei um utilizador errado~n", []), containsUsername(Username, Tail)
+			true -> containsUsername(Username, Tail)
 		end.
 
 containsPassword(_, [], _) -> false;
 containsPassword(Username, [{Name, Pass} | Tail], Password) ->
-	if Username == Name,  Pass == Password ->
-				true;
-			Username == Name,  Pass =:= Password ->
-				false;
-			true ->
-				containsUsername(Username, Tail)
-	end.
+		if Username == Name,  Pass == Password ->
+					true;
+				Username == Name,  Pass =:= Password ->
+					false;
+				true ->
+					containsUsername(Username, Tail)
+		end.
 
-createPerson(Username, Users, Password) -> [{Username, Password} | Users].
+createPerson(Username, Users, Password) -> 
+		[{Username, Password} | Users].
+
+
+putEndMessage(Data,[]) -> [Data];
+putEndMessage(Data, [H | T]) -> [H | putEndMessage(Data, T)].
