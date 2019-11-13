@@ -15,5 +15,5 @@ sendData(Port, Sock) ->
 
 receiveData(Sock) ->
 		{ok, Term} = gen_tcp:recv(Sock, 0),
-	    io:format("Client received: ~s~n", [Term]),
+	    io:format("~s~n", [Term]),
 	    receiveData(Sock).
