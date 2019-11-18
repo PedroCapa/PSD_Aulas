@@ -1,8 +1,6 @@
 -module(serverSocket).
 -export([server/1]).
 
-%Deve estar feito
-
 server(Port) ->
 		Room = spawn(fun()-> room(createChat(), []) end),
 		{ok, LSock} = gen_tcp:listen(Port, [binary, {packet, line}, {reuseaddr, true}]),
@@ -34,19 +32,20 @@ room(Pids, Users) ->
 						PID ! {sucess, {Username, Password}, "\\room Lobby\n"}, 
 						room(Pids, [{Username, Password} | Users]) 
 				end;
-			{line, Data, PID, Sala} ->
+			{line, Data, PID, Sala, Username} ->
 				R = containsChat(binary_to_list(Data), Pids),
 				if
 					 R == true ->
 					 	PID ! {sala, Data},
 					 	room(changeChat(Data, Pids, PID), Users);
 					 true -> 
-					 	[sendMessage(P, {line, Data}) || P <- sameRoom(Sala, Pids)], 
+					 	[sendMessage(P, {line, list_to_binary(Username ++ ": 	" ++ binary_to_list(Data))}) || P <- sameRoom(Sala, Pids)], 
 					 	room(Pids, Users)
 				end;				
-			{leave, Pid} ->
+			{leave, Room, Pid} ->
 				io:format("userleft ~n", []),
-				room(Pids -- [Pid], Users)
+				PID = removeUser(Pids, Pid, Room),
+				room(PID, Users)
 		end.
 
 sameRoom(_, []) -> [];
@@ -74,28 +73,10 @@ user(Sock, Room) ->
 			gen_tcp:send(Sock, "authenticated with sucess"),
 			authenticated(Sock, Room, Person, Sala);
 		{tcp_closed, _} ->
-			Room ! {leave, self()};
+			Room ! {leave, Room, self()};
 		{tcp_error, _, _} ->
-			Room ! {leave, self()}
+			Room ! {leave, Room, self()}
 	end.
-
-
-authenticated(Sock, Room, {Username, Password}, Sala) ->
-		receive
-			{line, Data} ->
-				gen_tcp:send(Sock, binary_to_list(Data)),
-				authenticated(Sock, Room, {Username, Password}, Sala);
-			{tcp, _, Data} ->
-				Room ! {line, Data, self(), Sala},
-				authenticated(Sock, Room, {Username, Password}, Sala);
-			{sala, S} ->
-				gen_tcp:send(Sock, "Mudou para a sala"),
-				authenticated(Sock, Room, {Username, Password}, binary_to_list(S));
-			{tcp_closed, _} ->
-				Room ! {leave, self()};
-			{tcp_error, _, _} ->
-				Room ! {leave, self()}
-		end.
 
 authentication() ->
 		receive
@@ -106,6 +87,23 @@ authentication() ->
 			{tcp, _, Pass} ->
 				Password = binary_to_list(Pass),
 				{Username, Password}
+		end.
+
+authenticated(Sock, Room, {Username, Password}, Sala) ->
+		receive
+			{line, Data} ->
+				gen_tcp:send(Sock, binary_to_list(Data)),
+				authenticated(Sock, Room, {Username, Password}, Sala);
+			{tcp, _, Data} ->
+				Room ! {line, Data, self(), Sala, Username},
+				authenticated(Sock, Room, {Username, Password}, Sala);
+			{sala, S} ->
+				gen_tcp:send(Sock, "Mudou para a sala " ++ S),
+				authenticated(Sock, Room, {Username, Password}, binary_to_list(S));
+			{tcp_closed, _} ->
+				Room ! {leave, Sala, self()};
+			{tcp_error, _, _} ->
+				Room ! {leave, Sala, self()}
 		end.
 
 containsUsername(_, []) -> false;
@@ -133,17 +131,7 @@ changeChat(Room, Pids, PID) ->
 		B.
 
 removeChat([], _) -> [];
-removeChat([{Topic, Pids} | T], PID) -> [{Topic, removePID(Pids, PID)} | removeChat(T, PID)].
-
-removePID([], _) -> [];
-removePID([H | T], PID) ->
-		if 
-			PID == H ->
-			T;
-			true ->
-			[H | removePID(T, PID)]
-		end.
-
+removeChat([{Topic, Pids} | T], PID) -> [{Topic, Pids -- [PID]} | removeChat(T, PID)].
 
 putChat(_, [], _) -> [];
 putChat(Room, [{Topic, Users} | T], Pid) ->
@@ -159,4 +147,11 @@ containsChat(Room, [{Topic, _} | T]) ->
 		if Room == Topic ->
 			true;
 			true -> containsChat(Room, T)
+		end.
+
+removeUser([], _, _) -> [];
+removeUser([{Topic, Users} | T], Pid, Room) -> 
+		if Room == Topic ->
+			[{Topic, Users -- [Pid]} | T];
+			true -> [{Topic, Users} |removeUser(T, Pid, Room)]
 		end.
