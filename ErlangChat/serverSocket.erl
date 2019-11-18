@@ -1,6 +1,8 @@
 -module(serverSocket).
 -export([server/1]).
 
+%Deve estar feito
+
 server(Port) ->
 		Room = spawn(fun()-> room(createChat(), []) end),
 		{ok, LSock} = gen_tcp:listen(Port, [binary, {packet, line}, {reuseaddr, true}]),

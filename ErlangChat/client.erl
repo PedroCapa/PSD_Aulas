@@ -1,6 +1,8 @@
 -module (client).
 -export ([client/1, sendData/2]).
 
+%Parte do cliente
+
 client(Port) ->
 		{ok, Sock} = gen_tcp:connect("127.0.0.1", Port, [binary, {active,false}]),
 		io:format("Entrei no servidor ~n"),
