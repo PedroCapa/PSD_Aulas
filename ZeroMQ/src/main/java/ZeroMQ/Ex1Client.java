@@ -12,7 +12,7 @@ import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Cliente
+public class Ex1Client
 {
     public static void main(String[] args)
     {

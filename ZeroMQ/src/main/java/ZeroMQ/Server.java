@@ -18,7 +18,8 @@ public class Server
                 //Send to the subscribers
                 int id = rand.nextInt(10);
                 int data = rand.nextInt(100);
-                publisher.send(String.format("%05d %d", id, data));
+                publisher.sendMore(Integer.toString(id));
+                publisher.send(Integer.toString(data));
             }
         }
     }

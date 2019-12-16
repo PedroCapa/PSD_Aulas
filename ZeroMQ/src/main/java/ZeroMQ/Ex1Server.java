@@ -3,7 +3,7 @@ import org.zeromq.ZContext;
 
 import java.util.Random;
 
-public class Server
+public class Ex1Server
 {
     public static void main(String[] args) throws Exception
     {

@@ -24,7 +24,7 @@ public class Cliente
             Random rand = new Random();
             int id = rand.nextInt(10);
 
-            subscriber.subscribe(String.format("%05d", id));
+            subscriber.subscribe(Integer.toString(id));
             String reply = subscriber.recvStr();
             System.out.println(reply);
         }
