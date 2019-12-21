@@ -28,6 +28,8 @@ public class Departments {
         this.departments = new HashMap<String, Department>();
         Department department = new Department("UM", "UMinho department");
         departments.put(department.getName(), department);
+        Department d = new Department("FCP", "Departamento do FCP");
+        departments.put(d.getName(), d);
     }
 
     @GET
@@ -40,7 +42,7 @@ public class Departments {
     }
 
     @GET
-    @Path("/default/{name}")
+    @Path("/{name}")
     public Response getDepartment(@PathParam("name") String name){
         if(!departments.containsKey(name)){
             return Response.status(Response.Status.NOT_FOUND).build();
@@ -51,10 +53,21 @@ public class Departments {
     }
 
     @POST
-    public Response add(Department department){
-        String name = department.getName();
-        String description = department.getDescription();
+    public Response add(@QueryParam("name") String name, @QueryParam("description") String description){
         departments.put(name, new Department(name, description));
+        return Response.status(Response.Status.CREATED).build();
+    }
+    
+
+    @PUT
+    public Response set(@QueryParam("name") String name, @QueryParam("description") String description){
+        if(!departments.containsKey(name)){
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+
+        departments.remove(name);
+        departments.put(name, new Department(name, description));
+
         return Response.status(Response.Status.CREATED).build();
     }
 }
